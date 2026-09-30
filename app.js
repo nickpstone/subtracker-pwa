@@ -16,15 +16,18 @@
       totalPeriods: 4,
       periodName: 'Quarter',
       sampleTeam: [
-        { name: 'Curry', jersey: '30', isStarter: true },
-        { name: 'Thompson', jersey: '11', isStarter: true },
-        { name: 'Wiggins', jersey: '22', isStarter: true },
-        { name: 'Green', jersey: '23', isStarter: true },
-        { name: 'Looney', jersey: '5', isStarter: true },
-        { name: 'Paul', jersey: '3', isStarter: false },
-        { name: 'Kuminga', jersey: '00', isStarter: false },
-        { name: 'Moody', jersey: '4', isStarter: false },
-        { name: 'Payton', jersey: '8', isStarter: false }
+        { name: 'Mitch Norton', jersey: '8', isStarter: true },
+        { name: 'Keandre Cook', jersey: '1', isStarter: true },
+        { name: 'Casey Prather', jersey: '23', isStarter: true },
+        { name: 'Josh Bannan', jersey: '13', isStarter: true },
+        { name: 'Tyrell Harrison', jersey: '24', isStarter: true },
+        { name: 'James Batemon', jersey: '5', isStarter: false },
+        { name: 'Isaac White', jersey: '2', isStarter: false },
+        { name: 'Sam McDaniel', jersey: '26', isStarter: false },
+        { name: 'Deng Adel', jersey: '10', isStarter: false },
+        { name: 'Rocco Zikarsky', jersey: '11', isStarter: false },
+        { name: 'Tohi Smith-Milner', jersey: '18', isStarter: false },
+        { name: 'Jarred Bairstow', jersey: '21', isStarter: false }
       ]
     },
     'Soccer (11-a-side)': {
