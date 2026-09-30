@@ -126,6 +126,7 @@
       maxActivePlayers: 5,
       periodDurationMinutes: 10,
       totalPeriods: 4,
+      maxPersonalFouls: 5,
       teamName: 'Warriors'
     },
     currentPeriod: 1,
@@ -420,6 +421,7 @@
       timesOnField: 0,
       accumulatedPlayTime: 0,
       accumulatedBenchTime: 0,
+      personalFouls: 0,
       currentShiftStart: null,
       currentBenchStart: null,
       shifts: []
@@ -640,6 +642,7 @@
       player.timesOnField = 0;
       player.accumulatedPlayTime = 0;
       player.accumulatedBenchTime = 0;
+      player.personalFouls = 0;
       player.currentShiftStart = null;
       player.currentBenchStart = null;
       player.shifts = [];
@@ -830,6 +833,72 @@
     return player.jerseyNumber ? `#${player.jerseyNumber} ${player.name}` : player.name;
   }
 
+  function addPersonalFoul(id) {
+    const player = state.players.find(p => p.id === id);
+    if (!player) return;
+
+    player.personalFouls = (player.personalFouls || 0) + 1;
+    const maxFouls = state.matchSettings.maxPersonalFouls || 5;
+
+    if (player.personalFouls >= maxFouls) {
+      playSound('buzzer');
+      triggerHaptic([150, 80, 150, 80, 300]);
+      showToast(`🚨 ${playerDisplayName(player)} reached ${player.personalFouls} personal fouls and FOULED OUT!`);
+
+      // Log Foul Out Event
+      const event = {
+        id: generateUUID(),
+        timestamp: Date.now(),
+        matchElapsedSeconds: state.totalMatchElapsedSeconds,
+        type: 'foulOut',
+        playerName: player.name,
+        jerseyNumber: player.jerseyNumber,
+        targetPlayerName: null,
+        targetJerseyNumber: null,
+        period: state.currentPeriod,
+        foulCount: player.personalFouls
+      };
+      state.events.unshift(event);
+    } else {
+      playSound('sub');
+      triggerHaptic([50]);
+      const warningText = (player.personalFouls === maxFouls - 1) ? ' ⚠️ Foul Trouble!' : '';
+      showToast(`${playerDisplayName(player)}: Personal Foul #${player.personalFouls} (${player.personalFouls}/${maxFouls})${warningText}`);
+
+      // Log Foul Event
+      const event = {
+        id: generateUUID(),
+        timestamp: Date.now(),
+        matchElapsedSeconds: state.totalMatchElapsedSeconds,
+        type: 'foul',
+        playerName: player.name,
+        jerseyNumber: player.jerseyNumber,
+        targetPlayerName: null,
+        targetJerseyNumber: null,
+        period: state.currentPeriod,
+        foulCount: player.personalFouls
+      };
+      state.events.unshift(event);
+    }
+
+    saveState();
+    render();
+  }
+
+  function removePersonalFoul(id) {
+    const player = state.players.find(p => p.id === id);
+    if (!player) return;
+
+    if ((player.personalFouls || 0) > 0) {
+      player.personalFouls--;
+      const maxFouls = state.matchSettings.maxPersonalFouls || 5;
+      triggerHaptic([30]);
+      showToast(`Removed foul from ${playerDisplayName(player)} (${player.personalFouls}/${maxFouls})`);
+      saveState();
+      render();
+    }
+  }
+
   function logEvent(type, player) {
     const event = {
       id: generateUUID(),
@@ -874,7 +943,7 @@
   // Report Generation & Export
   // ==========================================
   function generateCSVReport() {
-    let csv = "Jersey,Player Name,Status,Times On,Total Played (MM:SS),Total Played (Seconds),Total Bench (MM:SS),Play Percentage (%)\n";
+    let csv = "Jersey,Player Name,Status,Times On,Personal Fouls,Total Played (MM:SS),Total Played (Seconds),Total Bench (MM:SS),Play Percentage (%)\n";
     const totalGame = Math.max(1, state.totalMatchElapsedSeconds);
     const now = Date.now();
 
@@ -883,8 +952,9 @@
       const playTime = playerTotalPlayTime(player, now);
       const benchTime = playerTotalBenchTime(player, now);
       const percent = Math.min(100, (playTime / totalGame) * 100);
+      const fouls = player.personalFouls || 0;
 
-      const row = `"${jersey}","${player.name.replace(/"/g, '""')}","${player.status === 'playing' ? 'On Court' : 'On Bench'}",${player.timesOnField},"${formatDuration(playTime)}",${Math.floor(playTime)},"${formatDuration(benchTime)}",${percent.toFixed(1)}\n`;
+      const row = `"${jersey}","${player.name.replace(/"/g, '""')}","${player.status === 'playing' ? 'On Court' : 'On Bench'}",${player.timesOnField},${fouls},"${formatDuration(playTime)}",${Math.floor(playTime)},"${formatDuration(benchTime)}",${percent.toFixed(1)}\n`;
       csv += row;
     }
     return csv;
@@ -922,7 +992,9 @@
       const playTime = playerTotalPlayTime(p, now);
       const pct = Math.min(100, (playTime / totalGame) * 100).toFixed(0);
       const jersey = p.jerseyNumber ? `#${p.jerseyNumber} ` : '';
-      text += `• ${jersey}${p.name}: Played ${formatDuration(playTime)} (${pct}%) | Shifts: ${p.timesOnField}\n`;
+      const fouls = p.personalFouls || 0;
+      const foulTxt = fouls > 0 ? ` | ${fouls} Fouls` : '';
+      text += `• ${jersey}${p.name}: Played ${formatDuration(playTime)} (${pct}%)${foulTxt} | Shifts: ${p.timesOnField}\n`;
     });
 
     return text;
@@ -1000,6 +1072,8 @@
     document.getElementById('val-max-players').textContent = state.matchSettings.maxActivePlayers;
     document.getElementById('val-period-duration').textContent = state.matchSettings.periodDurationMinutes;
     document.getElementById('val-total-periods').textContent = state.matchSettings.totalPeriods;
+    const maxFoulsEl = document.getElementById('val-max-fouls');
+    if (maxFoulsEl) maxFoulsEl.textContent = state.matchSettings.maxPersonalFouls || 5;
     document.getElementById('label-total-periods').textContent = `Total ${getPeriodName()}s`;
     document.getElementById('input-team-name').value = state.matchSettings.teamName;
 
@@ -1165,8 +1239,20 @@
     const playTotal = formatDuration(playerTotalPlayTime(player, now));
     const benchTotal = formatDuration(playerTotalBenchTime(player, now));
 
+    const fouls = player.personalFouls || 0;
+    const maxFouls = state.matchSettings.maxPersonalFouls || 5;
+    const isFouledOut = fouls >= maxFouls;
+    const isFoulWarning = fouls === maxFouls - 1;
+
+    let foulClass = '';
+    if (isFouledOut) {
+      foulClass = 'fouled-out';
+    } else if (isFoulWarning) {
+      foulClass = 'warning';
+    }
+
     return `
-      <div class="player-card ${isCourt ? 'playing' : 'bench'}" data-player-id="${player.id}">
+      <div class="player-card ${isCourt ? 'playing' : 'bench'} ${isFouledOut ? 'fouled-out' : ''}" data-player-id="${player.id}">
         <div class="jersey-badge ${isCourt ? 'playing' : ''}">
           ${player.jerseyNumber ? '#' + player.jerseyNumber : '—'}
         </div>
@@ -1174,6 +1260,12 @@
           <div class="player-top-line">
             <span class="player-name">${escapeHTML(player.name)}</span>
             <span class="shifts-badge">On: ${player.timesOnField || 0}x</span>
+            <div class="foul-control" title="Personal fouls: ${fouls}/${maxFouls}">
+              <button class="btn-foul-mini sub" data-action="remove-foul" data-id="${player.id}" title="Decrease foul">−</button>
+              <span class="foul-badge ${foulClass}">PF: ${fouls}</span>
+              <button class="btn-foul-mini add" data-action="add-foul" data-id="${player.id}" title="Assign personal foul">+</button>
+            </div>
+            ${isFouledOut ? '<span class="foul-out-pill">Fouled Out</span>' : ''}
           </div>
           <div class="player-timers">
             <div class="stint-timer ${isCourt ? 'shift' : 'rest'}">
@@ -1255,10 +1347,15 @@
       const bench = playerTotalBenchTime(p, now);
       const pct = Math.min(100, (play / totalGame) * 100);
 
+      const fouls = p.personalFouls || 0;
+      const maxFouls = state.matchSettings.maxPersonalFouls || 5;
+      const isFouledOut = fouls >= maxFouls;
+      const foulBadge = fouls > 0 ? `<span class="shifts-badge" style="background:${isFouledOut?'rgba(239,68,68,0.2)':'rgba(245,158,11,0.15)'}; color:${isFouledOut?'#ef4444':'#f59e0b'}; margin-left:6px;">${fouls} Fouls${isFouledOut?' (Fouled Out)':''}</span>` : '';
+
       html += `
         <div class="summary-player-row">
           <div class="summary-player-top">
-            <span class="summary-player-name">${playerDisplayName(p)}</span>
+            <span class="summary-player-name">${playerDisplayName(p)} ${foulBadge}</span>
             <span class="summary-playtime">${formatDuration(play)}</span>
           </div>
           <div class="progress-track">
@@ -1319,13 +1416,17 @@
     document.getElementById('swap-out-name').textContent = outPlayer ? playerDisplayName(outPlayer) : 'Select player';
     document.getElementById('swap-in-name').textContent = inPlayer ? playerDisplayName(inPlayer) : 'Select player';
 
+    const maxFouls = state.matchSettings.maxPersonalFouls || 5;
+
     // Out List (Active Players)
     let outHtml = '';
     getActivePlayers().forEach(p => {
       const isSel = p.id === state.selectedSwapOutId;
+      const fouls = p.personalFouls || 0;
+      const foulStr = fouls >= maxFouls ? '🚨 Fouled Out' : (fouls > 0 ? `${fouls} PF` : '');
       outHtml += `
         <div class="swap-candidate-item ${isSel ? 'selected-out' : ''}" data-swap-out-id="${p.id}">
-          <div class="candidate-name">${playerDisplayName(p)}</div>
+          <div class="candidate-name">${playerDisplayName(p)} ${foulStr ? `<span style="font-size:0.75rem; color:${fouls>=maxFouls?'#ef4444':'#f59e0b'}; font-weight:700;">(${foulStr})</span>` : ''}</div>
           <div class="candidate-time">Shift: ${formatDuration(playerCurrentStint(p, now))}</div>
         </div>
       `;
@@ -1336,9 +1437,11 @@
     let inHtml = '';
     getBenchPlayers().forEach(p => {
       const isSel = p.id === state.selectedSwapInId;
+      const fouls = p.personalFouls || 0;
+      const foulStr = fouls >= maxFouls ? '🚨 Fouled Out' : (fouls > 0 ? `${fouls} PF` : '');
       inHtml += `
         <div class="swap-candidate-item ${isSel ? 'selected-in' : ''}" data-swap-in-id="${p.id}">
-          <div class="candidate-name">${playerDisplayName(p)}</div>
+          <div class="candidate-name">${playerDisplayName(p)} ${foulStr ? `<span style="font-size:0.75rem; color:${fouls>=maxFouls?'#ef4444':'#f59e0b'}; font-weight:700;">(${foulStr})</span>` : ''}</div>
           <div class="candidate-time">Rested: ${formatDuration(playerCurrentStint(p, now))}</div>
         </div>
       `;
@@ -1365,10 +1468,27 @@
         } else if (evt.type === 'swap') {
           const targetLabel = evt.targetJerseyNumber ? `#${evt.targetJerseyNumber} ${evt.targetPlayerName}` : evt.targetPlayerName;
           desc = `${playerLabel} replaced ${targetLabel}`;
+        } else if (evt.type === 'foul') {
+          desc = `${playerLabel} committed personal foul (${evt.foulCount}/${state.matchSettings.maxPersonalFouls || 5})`;
+        } else if (evt.type === 'foulOut') {
+          desc = `🚨 ${playerLabel} committed personal foul #${evt.foulCount} — FOULED OUT`;
         }
 
-        const badgeClass = evt.type === 'subIn' ? 'in' : (evt.type === 'subOut' ? 'out' : 'swap');
-        const badgeText = evt.type === 'subIn' ? 'Sub In' : (evt.type === 'subOut' ? 'Sub Out' : 'Swap');
+        let badgeClass = 'in';
+        let badgeText = 'Sub In';
+        if (evt.type === 'subOut') {
+          badgeClass = 'out';
+          badgeText = 'Sub Out';
+        } else if (evt.type === 'swap') {
+          badgeClass = 'swap';
+          badgeText = 'Swap';
+        } else if (evt.type === 'foul') {
+          badgeClass = 'foul';
+          badgeText = `Foul (${evt.foulCount})`;
+        } else if (evt.type === 'foulOut') {
+          badgeClass = 'foul-out';
+          badgeText = 'Fouled Out';
+        }
 
         html += `
           <div class="log-item">
@@ -1471,6 +1591,28 @@
         render();
       }
     });
+
+    const btnMaxFoulsDec = document.getElementById('btn-max-fouls-dec');
+    if (btnMaxFoulsDec) {
+      btnMaxFoulsDec.addEventListener('click', () => {
+        if ((state.matchSettings.maxPersonalFouls || 5) > 1) {
+          state.matchSettings.maxPersonalFouls = (state.matchSettings.maxPersonalFouls || 5) - 1;
+          saveState();
+          render();
+        }
+      });
+    }
+
+    const btnMaxFoulsInc = document.getElementById('btn-max-fouls-inc');
+    if (btnMaxFoulsInc) {
+      btnMaxFoulsInc.addEventListener('click', () => {
+        if ((state.matchSettings.maxPersonalFouls || 5) < 10) {
+          state.matchSettings.maxPersonalFouls = (state.matchSettings.maxPersonalFouls || 5) + 1;
+          saveState();
+          render();
+        }
+      });
+    }
 
     // 3. Team name input
     document.getElementById('input-team-name').addEventListener('input', (e) => {
@@ -1576,7 +1718,7 @@
       });
     });
 
-    // 12. Player row action delegation (START / STOP / SWAP)
+    // 12. Player row action delegation (START / STOP / SWAP / FOULS)
     function handlePlayerAction(e) {
       const btn = e.target.closest('button');
       if (!btn) return;
@@ -1589,6 +1731,10 @@
         stopPlayer(id);
       } else if (action === 'swap-player') {
         setupQuickSwapModal(id);
+      } else if (action === 'add-foul') {
+        addPersonalFoul(id);
+      } else if (action === 'remove-foul') {
+        removePersonalFoul(id);
       }
     }
 

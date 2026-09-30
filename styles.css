@@ -583,6 +583,88 @@ html, body {
   white-space: nowrap;
 }
 
+/* Personal Fouls Controls & Badges */
+.foul-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 1px 4px;
+}
+
+.btn-foul-mini {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 20px;
+  height: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  transition: all 0.1s ease;
+}
+
+.btn-foul-mini:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-foul-mini.add {
+  color: var(--accent-orange);
+}
+
+.btn-foul-mini.add:hover {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fff;
+}
+
+.btn-foul-mini:active {
+  transform: scale(0.85);
+}
+
+.foul-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 1px 3px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.foul-badge.warning {
+  color: var(--accent-gold);
+  font-weight: 800;
+}
+
+.foul-badge.fouled-out {
+  color: var(--accent-red);
+  font-weight: 800;
+}
+
+.foul-out-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent-red);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  animation: pulse 1.5s infinite;
+}
+
+.player-card.fouled-out {
+  border-left: 4px solid var(--accent-red) !important;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 0%, var(--bg-card) 30%);
+}
+
 .player-timers {
   display: flex;
   align-items: center;
@@ -1220,6 +1302,8 @@ html, body {
 .log-badge.in { background: var(--accent-green-bg); color: var(--accent-green); }
 .log-badge.out { background: var(--accent-red-bg); color: var(--accent-red); }
 .log-badge.swap { background: var(--accent-blue-bg); color: var(--accent-blue); }
+.log-badge.foul { background: var(--accent-gold-bg); color: var(--accent-gold); }
+.log-badge.foul-out { background: var(--accent-red-bg); color: var(--accent-red); }
 
 /* Toast Notifications */
 .toast-container {
