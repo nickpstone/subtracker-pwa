@@ -17,17 +17,20 @@
       periodName: 'Quarter',
       sampleTeam: [
         { name: 'Mitch Norton', jersey: '8', isStarter: true },
-        { name: 'Keandre Cook', jersey: '1', isStarter: true },
-        { name: 'Casey Prather', jersey: '23', isStarter: true },
-        { name: 'Josh Bannan', jersey: '13', isStarter: true },
+        { name: 'Nate Hinton', jersey: '4', isStarter: true },
+        { name: 'Sam McDaniel', jersey: '26', isStarter: true },
+        { name: 'Jaylin Williams', jersey: '2', isStarter: true },
         { name: 'Tyrell Harrison', jersey: '24', isStarter: true },
-        { name: 'James Batemon', jersey: '5', isStarter: false },
-        { name: 'Isaac White', jersey: '2', isStarter: false },
-        { name: 'Sam McDaniel', jersey: '26', isStarter: false },
-        { name: 'Deng Adel', jersey: '10', isStarter: false },
-        { name: 'Rocco Zikarsky', jersey: '11', isStarter: false },
-        { name: 'Tohi Smith-Milner', jersey: '18', isStarter: false },
-        { name: 'Jarred Bairstow', jersey: '21', isStarter: false }
+        { name: 'Arnas Velicka', jersey: '1', isStarter: false },
+        { name: 'Taine Murray', jersey: '0', isStarter: false },
+        { name: 'Max Mackinnon', jersey: '3', isStarter: false },
+        { name: 'Joshua Duach', jersey: '5', isStarter: false },
+        { name: 'Archie Woodhill', jersey: '6', isStarter: false },
+        { name: 'Billy McRae', jersey: '10', isStarter: false },
+        { name: 'Lat Mayen', jersey: '11', isStarter: false },
+        { name: 'Rio Bruton', jersey: '13', isStarter: false },
+        { name: 'Harry Rouhliadeff', jersey: '14', isStarter: false },
+        { name: 'Jacob Holt', jersey: '15', isStarter: false }
       ]
     },
     'Soccer (11-a-side)': {
