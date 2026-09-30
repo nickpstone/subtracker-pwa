@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SubTracker — Basketball & Sports Rotation Manager</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <meta name="description" content="Live basketball and sports substitution tracker, player shift manager, and fair play rotation assistant.">
+  <meta name="theme-color" content="#161e2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SubTracker">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Icons & Manifest -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Navigation Bar -->
+    <header class="top-bar">
+      <div class="top-bar-title">
+        <img src="icons/favicon.svg" alt="SubTracker Icon" class="brand-icon">
+        <h1 id="header-team-title">SubTracker</h1>
+      </div>
+      <div class="top-bar-actions">
+        <!-- Wake Lock Toggle (keeps screen on during games) -->
+        <button id="btn-wakelock" class="icon-btn" title="Keep screen awake during game" aria-label="Toggle screen wake lock">
+          <span class="icon">☀️</span>
+        </button>
+        <!-- Audio / Buzzer Toggle -->
+        <button id="btn-sound" class="icon-btn" title="Toggle buzzer & whistle sound" aria-label="Toggle sound">
+          <span class="icon">🔔</span>
+        </button>
+        <!-- Substitution Log Button (visible in match) -->
+        <button id="btn-open-log" class="icon-btn" style="display: none;" aria-label="Open substitution log">
+          <span>📋 Log</span>
+        </button>
+        <!-- End Match / Stats Button (visible in match) -->
+        <button id="btn-match-menu" class="icon-btn primary" style="display: none;" aria-label="Match actions">
+          <span>📊 Report</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- VIEW 1: MATCH SETUP & ROSTER (notStarted) -->
+    <main id="view-setup" class="view-container">
+      
+      <!-- Card 1: Sport & Match Rules -->
+      <section class="card">
+        <h2 class="card-title">Sport & Match Rules</h2>
+        
+        <div class="form-group">
+          <label class="form-label" for="select-sport">Sport Preset</label>
+          <select id="select-sport" class="form-select">
+            <option value="Basketball" selected>🏀 Basketball (5 on court, 10m quarters)</option>
+            <option value="Soccer (11-a-side)">⚽ Soccer 11s (11 on court, 45m halves)</option>
+            <option value="Soccer 7s / Mini">⚽ Soccer 7s / Mini (7 on court, 25m halves)</option>
+            <option value="Netball">🏐 Netball (7 on court, 15m quarters)</option>
+            <option value="Futsal">⚡ Futsal (5 on court, 20m halves)</option>
+            <option value="Custom">⚙️ Custom Rules</option>
+          </select>
+        </div>
+
+        <div class="stepper-row">
+          <span class="stepper-label">Max Players on Court</span>
+          <div class="stepper-controls">
+            <button class="stepper-btn" id="btn-max-players-dec" aria-label="Decrease max players">−</button>
+            <span class="stepper-value tabular-nums" id="val-max-players">5</span>
+            <button class="stepper-btn" id="btn-max-players-inc" aria-label="Increase max players">+</button>
+          </div>
+        </div>
+
+        <div class="stepper-row">
+          <span class="stepper-label">Period Duration (min)</span>
+          <div class="stepper-controls">
+            <button class="stepper-btn" id="btn-period-duration-dec" aria-label="Decrease period duration">−</button>
+            <span class="stepper-value tabular-nums" id="val-period-duration">10</span>
+            <button class="stepper-btn" id="btn-period-duration-inc" aria-label="Increase period duration">+</button>
+          </div>
+        </div>
+
+        <div class="stepper-row">
+          <span class="stepper-label" id="label-total-periods">Total Quarters</span>
+          <div class="stepper-controls">
+            <button class="stepper-btn" id="btn-total-periods-dec" aria-label="Decrease total periods">−</button>
+            <span class="stepper-value tabular-nums" id="val-total-periods">4</span>
+            <button class="stepper-btn" id="btn-total-periods-inc" aria-label="Increase total periods">+</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+          <label class="form-label" for="input-team-name">Team Name</label>
+          <input type="text" id="input-team-name" class="form-input" placeholder="e.g. Golden State Warriors" value="My Team">
+        </div>
+      </section>
+
+      <!-- Card 2: Add Players -->
+      <section class="card">
+        <h2 class="card-title">Add Players</h2>
+        <div class="add-player-row">
+          <input type="text" id="input-jersey" class="form-input jersey-input" placeholder="#" maxlength="3" inputmode="numeric">
+          <input type="text" id="input-player-name" class="form-input" placeholder="Player name">
+          <button id="btn-add-player" class="btn-add-player" disabled>+ Add</button>
+        </div>
+
+        <div class="setup-actions-row">
+          <button id="btn-open-bulk" class="btn-ghost">
+            <span>📋 Bulk Paste Roster</span>
+          </button>
+          <button id="btn-load-sample" class="btn-ghost">
+            <span>🪄 Load Sample Team</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Card 3: Squad Roster List -->
+      <section class="card">
+        <div class="card-title">
+          <span>Squad Roster (<span id="roster-count">0</span>)</span>
+          <span class="starters-indicator" id="starters-count-label">Starters: 0/5</span>
+        </div>
+        <div id="roster-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </section>
+
+      <!-- Bottom Dock: Kick Off Match CTA -->
+      <div class="bottom-dock">
+        <button id="btn-kickoff-match" class="btn-big-cta" disabled>
+          <span>▶ Kick Off Match</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- VIEW 2: ACTIVE LIVE MATCH (running / paused) -->
+    <main id="view-match" class="view-container" style="display: none;">
+      
+      <!-- Master Match Timer Card -->
+      <section class="card timer-card">
+        <div class="timer-header">
+          <div class="period-badge" id="badge-period">
+            <span>Quarter 1 of 4</span>
+          </div>
+          <div class="court-count-badge" id="badge-court-count">
+            <span id="label-court-count">0/5 on court</span>
+          </div>
+        </div>
+
+        <div class="master-clock tabular-nums" id="display-period-time">00:00</div>
+        
+        <div class="total-clock-label">
+          <span>Total Game Elapsed:</span>
+          <span class="total-clock-time tabular-nums" id="display-total-time">00:00</span>
+        </div>
+
+        <div class="timer-controls">
+          <button id="btn-clock-toggle" class="btn-clock-toggle">
+            <span id="clock-toggle-icon">⏸</span>
+            <span id="clock-toggle-text">Pause Clock</span>
+          </button>
+          <button id="btn-next-period" class="btn-period-next">
+            <span id="btn-next-period-label">Next Qtr ⏩</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Over Limit Alert Banner -->
+      <div id="banner-limit-warning" class="alert-banner danger" style="display: none;">
+        <span>⚠️ Too many players on court! (<span id="warning-court-count">6</span>/<span id="warning-max-count">5</span>)</span>
+      </div>
+
+      <!-- Smart Rotation Assistant Recommendation -->
+      <div id="card-rotation-assist" class="rotation-assist-card" style="display: none;">
+        <div class="assist-icon">💡</div>
+        <div class="assist-content">
+          <div class="assist-title">Fair Play Rotation Suggestion</div>
+          <div class="assist-text" id="rotation-assist-text">Sub Curry with Paul</div>
+        </div>
+        <button id="btn-assist-swap" class="assist-swap-btn">1-Tap Swap</button>
+      </div>
+
+      <!-- Filter Tabs & Quick Swap Bar -->
+      <div class="filter-bar">
+        <div class="segmented-control" role="tablist">
+          <button class="seg-btn active" data-filter="all" role="tab">All Squad</button>
+          <button class="seg-btn" data-filter="onCourt" role="tab">On Court</button>
+          <button class="seg-btn" data-filter="bench" role="tab">On Bench</button>
+        </div>
+        <button id="btn-open-quick-swap" class="quick-swap-trigger">
+          <span>⇄ Swap</span>
+        </button>
+      </div>
+
+      <!-- Section: ON COURT -->
+      <section id="section-on-court">
+        <div class="section-header">
+          <div class="section-label court">
+            <span>🏃 ON COURT (<span id="court-list-count">0</span>)</span>
+          </div>
+          <span class="section-hint">Tap STOP to bench</span>
+        </div>
+        <div id="list-on-court" class="player-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </section>
+
+      <!-- Section: ON BENCH -->
+      <section id="section-on-bench">
+        <div class="section-header">
+          <div class="section-label bench">
+            <span>🪑 ON BENCH (<span id="bench-list-count">0</span>)</span>
+          </div>
+          <span class="section-hint">Tap START to sub in</span>
+        </div>
+        <div id="list-on-bench" class="player-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </section>
+    </main>
+
+    <!-- VIEW 3: POST-GAME MATCH REPORT (ended) -->
+    <main id="view-report" class="view-container" style="display: none;">
+      
+      <section class="card">
+        <h2 class="card-title">Match Report & Breakdown</h2>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-box-title">Game Time</div>
+            <div class="stat-box-value blue tabular-nums" id="report-total-time">00:00</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-title">Total Subs</div>
+            <div class="stat-box-value orange tabular-nums" id="report-total-subs">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-title">Avg Play Time</div>
+            <div class="stat-box-value green tabular-nums" id="report-avg-playtime">00:00</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 14px;">
+          <button id="btn-share-summary" class="btn-ghost" style="flex: 1; justify-content: center; background: var(--accent-blue); color: #041426; border-color: var(--accent-blue); font-weight: 700;">
+            <span>📤 Share Summary</span>
+          </button>
+          <button id="btn-export-csv" class="btn-ghost" style="flex: 1; justify-content: center;">
+            <span>📄 Export CSV</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Player Statistics Breakdown -->
+      <section class="card">
+        <div class="card-title">
+          <span>Player Playing Time</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Sorted by Minutes</span>
+        </div>
+        <div id="report-player-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </section>
+
+      <!-- Reset / Start New Game Button -->
+      <div style="padding: 10px 0 20px;">
+        <button id="btn-start-new-match" class="btn-ghost" style="width: 100%; justify-content: center; color: var(--accent-red); border-color: rgba(239, 68, 68, 0.4); padding: 12px;">
+          <span>🔄 Start New Match</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Modal 1: Quick 1-to-1 Swap Modal -->
+    <div id="modal-swap" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="swap-title">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h2 id="swap-title" class="modal-title">Quick Substitution</h2>
+          <button class="modal-close-btn" data-close-modal="modal-swap" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          
+          <div class="swap-preview-card">
+            <div class="swap-side off">
+              <div class="swap-label">Coming Off (Bench)</div>
+              <div class="swap-player-selected" id="swap-out-name">Select player</div>
+            </div>
+            <div style="font-size: 1.4rem; color: var(--accent-blue);">⇄</div>
+            <div class="swap-side in">
+              <div class="swap-label">Coming In (Court)</div>
+              <div class="swap-player-selected" id="swap-in-name">Select player</div>
+            </div>
+          </div>
+
+          <div class="swap-columns">
+            <div>
+              <div class="swap-column-title">On Court (Choose OUT)</div>
+              <div id="swap-out-list" class="swap-candidate-list">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+            <div>
+              <div class="swap-column-title">On Bench (Choose IN)</div>
+              <div id="swap-in-list" class="swap-candidate-list">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-confirm-swap" class="btn-big-cta" disabled>
+            <span>Confirm Substitution</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 2: Bulk Roster Import Modal -->
+    <div id="modal-bulk" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bulk-title">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h2 id="bulk-title" class="modal-title">Bulk Import Roster</h2>
+          <button class="modal-close-btn" data-close-modal="modal-bulk" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Paste player names separated by newlines or commas. You can prefix or suffix jersey numbers (e.g. <code>#30 Curry</code>, <code>11 Thompson</code>, <code>LeBron 23</code>, <code>Durant</code>).
+          </p>
+          <textarea id="bulk-import-textarea" class="form-input" rows="8" placeholder="30 Curry&#10;11 Thompson&#10;22 Wiggins&#10;23 Green&#10;5 Looney&#10;3 Paul" style="resize: vertical; font-family: var(--font-mono); font-size: 0.9rem;"></textarea>
+          
+          <button id="btn-submit-bulk-import" class="btn-big-cta" style="margin-top: 16px;">
+            <span>Import Players</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 3: Substitution Chronological Log Modal -->
+    <div id="modal-log" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="log-title">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h2 id="log-title" class="modal-title">Substitution History</h2>
+          <button class="modal-close-btn" data-close-modal="modal-log" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="log-events-container">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 4: Confirmation Dialog -->
+    <div id="modal-confirm" class="modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal-sheet" style="max-height: 40vh;">
+        <div class="modal-header">
+          <h2 id="confirm-title" class="modal-title">Confirm Action</h2>
+          <button class="modal-close-btn" data-close-modal="modal-confirm" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="confirm-message" style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 20px;">Are you sure?</p>
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-confirm-cancel" class="btn-ghost" style="flex: 1; justify-content: center;">Cancel</button>
+            <button id="btn-confirm-action" class="btn-big-cta" style="flex: 1; justify-content: center; background: var(--accent-red); font-size: 0.95rem; padding: 12px;">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

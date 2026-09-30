@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <radialGradient id="ballShade" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#fb923c" />
+      <stop offset="70%" stop-color="#ea580c" />
+      <stop offset="100%" stop-color="#9a3412" />
+    </radialGradient>
+    <radialGradient id="bgGrad" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.4" />
+    </filter>
+  </defs>
+  
+  <!-- Base Container -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  
+  <!-- Outer Rotation Track / Substitution Arrows -->
+  <g transform="translate(256, 256)">
+    <!-- Sub IN Green Arc -->
+    <path d="M 0 -190 A 190 190 0 0 1 190 0" fill="none" stroke="#10b981" stroke-width="20" stroke-linecap="round" stroke-dasharray="14 10" />
+    <polygon points="190,0 215,-25 175,-35" fill="#10b981" />
+    
+    <!-- Sub OUT Blue Arc -->
+    <path d="M 0 190 A 190 190 0 0 1 -190 0" fill="none" stroke="#38bdf8" stroke-width="20" stroke-linecap="round" stroke-dasharray="14 10" />
+    <polygon points="-190,0 -215,25 -175,35" fill="#38bdf8" />
+    
+    <!-- Basketball Body -->
+    <circle r="135" fill="url(#ballShade)" filter="url(#shadow)" stroke="#c2410c" stroke-width="3" />
+    
+    <!-- Basketball Seams -->
+    <g fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round" opacity="0.85">
+      <!-- Horizontal seam -->
+      <line x1="-135" y1="0" x2="135" y2="0" />
+      <!-- Vertical seam -->
+      <line x1="0" y1="-135" x2="0" y2="135" />
+      <!-- Left rib curve -->
+      <path d="M -80 -108 C -25 -50, -25 50, -80 108" />
+      <!-- Right rib curve -->
+      <path d="M 80 -108 C 25 -50, 25 50, 80 108" />
+    </g>
+    
+    <!-- Center Stopwatch / Sub Badge -->
+    <circle r="44" fill="#0f172a" stroke="#f8fafc" stroke-width="4" filter="url(#shadow)" />
+    <!-- Clock Hands -->
+    <polyline points="256,256 256,236 270,236" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" transform="translate(-256, -256)" />
+    <!-- Center Pivot Pin -->
+    <circle r="4" fill="#f97316" />
+  </g>
+</svg>
