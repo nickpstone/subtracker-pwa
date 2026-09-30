@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>SubTracker — Basketball & Sports Rotation Manager</title>
   
   <!-- PWA & Mobile Meta Tags -->
@@ -171,15 +171,10 @@
           <span class="total-clock-time tabular-nums" id="display-total-time">00:00</span>
         </div>
 
-        <div class="timer-controls">
-          <button id="btn-clock-toggle" class="btn-clock-toggle">
-            <span id="clock-toggle-icon">⏸</span>
-            <span id="clock-toggle-text">Pause Clock</span>
-          </button>
-          <button id="btn-next-period" class="btn-period-next">
+        <div class="period-actions"><span id="match-status" role="status">Live</span>          <button id="btn-next-period" class="btn-period-next">
             <span id="btn-next-period-label">Next Qtr ⏩</span>
           </button>
-        </div>
+</div>
       </section>
 
       <!-- Over Limit Alert Banner -->
@@ -194,7 +189,7 @@
           <div class="assist-title">Fair Play Rotation Suggestion</div>
           <div class="assist-text" id="rotation-assist-text">Sub Norton with Velicka</div>
         </div>
-        <button id="btn-assist-swap" class="assist-swap-btn">1-Tap Swap</button>
+        <button id="btn-assist-swap" class="assist-swap-btn">Review swap</button>
       </div>
 
       <!-- Filter Tabs & Quick Swap Bar -->
@@ -204,18 +199,16 @@
           <button class="seg-btn" data-filter="onCourt" role="tab">On Court</button>
           <button class="seg-btn" data-filter="bench" role="tab">On Bench</button>
         </div>
-        <button id="btn-open-quick-swap" class="quick-swap-trigger">
-          <span>⇄ Swap</span>
-        </button>
+
       </div>
 
       <!-- Section: ON COURT -->
       <section id="section-on-court">
         <div class="section-header">
           <div class="section-label court">
-            <span>🏃 ON COURT (<span id="court-list-count">0</span>)</span>
+            <span>ON COURT (<span id="court-list-count">0</span>)</span>
           </div>
-          <span class="section-hint">Tap STOP to bench</span>
+          <span class="section-hint">Tap a name for details</span>
         </div>
         <div id="list-on-court" class="player-list">
           <!-- Populated by JavaScript -->
@@ -226,15 +219,28 @@
       <section id="section-on-bench">
         <div class="section-header">
           <div class="section-label bench">
-            <span>🪑 ON BENCH (<span id="bench-list-count">0</span>)</span>
+            <span>ON BENCH (<span id="bench-list-count">0</span>)</span>
           </div>
-          <span class="section-hint">Tap START to sub in</span>
+          <span class="section-hint">Tap a name for details</span>
         </div>
         <div id="list-on-bench" class="player-list">
           <!-- Populated by JavaScript -->
         </div>
       </section>
     </main>
+
+    <div id="match-dock" class="bottom-dock coach-dock" style="display:none;">
+      <div id="undo-bar" class="undo-bar" hidden>
+        <span id="undo-description"></span><button id="btn-undo-sub" class="btn-ghost">Undo</button>
+      </div>
+      <div class="coach-actions">          <button id="btn-clock-toggle" class="btn-clock-toggle">
+            <span id="clock-toggle-icon">⏸</span>
+            <span id="clock-toggle-text">Pause Clock</span>
+          </button>
+        <button id="btn-open-quick-swap" class="quick-swap-trigger">
+          <span>⇄ Swap</span>
+        </button></div>
+    </div>
 
     <!-- VIEW 3: POST-GAME MATCH REPORT (ended) -->
     <main id="view-report" class="view-container" style="display: none;">
@@ -327,6 +333,21 @@
           <button id="btn-confirm-swap" class="btn-big-cta" disabled>
             <span>Confirm Substitution</span>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-player" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="player-panel-title">
+      <div class="modal-sheet">
+        <div class="modal-header"><h2 id="player-panel-title" class="modal-title">Player details</h2><button class="modal-close-btn" data-close-modal="modal-player" aria-label="Close">✕</button></div>
+        <div class="modal-body">
+          <p id="player-panel-summary" class="player-panel-summary"></p>
+          <div class="stepper-row"><span>Personal fouls</span><div class="stepper-controls">
+            <button id="btn-panel-foul-remove" class="stepper-btn" aria-label="Remove personal foul">−</button>
+            <span id="player-panel-fouls" class="tabular-nums" role="status"></span>
+            <button id="btn-panel-foul-add" class="stepper-btn" aria-label="Add personal foul">+</button>
+          </div></div>
+          <button id="btn-panel-sub" class="btn-ghost panel-sub"></button>
         </div>
       </div>
     </div>

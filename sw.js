@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtracker-v1';
+const CACHE_NAME = 'subtracker-v2-coach';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

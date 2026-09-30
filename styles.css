@@ -1345,3 +1345,65 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--accent-blue);
   outline-offset: 2px;
 }
+
+/* Coach Mode: keep match context and the two main actions within reach. */
+[hidden] { display: none !important; }
+.coach-live .top-bar { position: relative; flex-wrap: wrap; gap: 8px; }
+.coach-live .top-bar-title { min-width: 0; flex: 1 1 130px; }
+.coach-live .top-bar-actions { flex-wrap: wrap; }
+.coach-live .icon-btn { min-height: 44px; padding: 8px; }
+.coach-live .icon-btn.primary { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-subtle); }
+#view-match { padding-bottom: calc(var(--safe-bottom) + 170px); }
+.coach-live .timer-card {
+  position: sticky; top: 0; z-index: 45; flex-shrink: 0;
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 12px;
+  background: #121824; padding: calc(var(--safe-top) + 12px) 14px 12px;
+  border-radius: 0 0 16px 16px; box-shadow: 0 5px 16px #0005;
+}
+.coach-live .timer-card::before { display: none; }
+.coach-live .timer-header { grid-column: 1 / -1; margin: 0; }
+.coach-live .master-clock { font-size: 2.5rem; text-align: left; margin: 2px 0; text-shadow: none; }
+.coach-live .total-clock-label { margin: 0; align-self: center; flex-direction: column; align-items: flex-end; gap: 0; font-size: .75rem; }
+.period-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#match-status { color: var(--text-secondary); font-size: .8rem; }
+.period-actions .btn-period-next { padding: 8px 12px; min-height: 44px; font-size: .8rem; }
+.coach-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.coach-actions button { min-height: 52px; box-shadow: none; border-radius: 12px; justify-content: center; font-size: 1rem; }
+.coach-actions .btn-clock-toggle { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 12px 8px; }
+.coach-actions .btn-clock-toggle.paused { color: var(--accent-gold); border-color: var(--accent-gold); }
+.undo-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 10px; font-size: .75rem; color: var(--text-secondary); }
+.undo-bar button { min-height: 44px; color: var(--accent-blue); }
+.coach-live .player-card { gap: 10px; padding: 12px; background: var(--bg-secondary); }
+.coach-live .player-top-line { flex-wrap: wrap; gap: 4px 8px; }
+.player-details { background: none; border: none; text-align: left; padding: 0; min-height: 44px; font-family: inherit; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
+.coach-live .player-timers { flex-wrap: wrap; gap: 4px 12px; font-size: .8rem; }
+.coach-live .stint-timer.rest { color: var(--text-secondary); }
+.coach-live .btn-swap-mini { width: 48px; height: 48px; border-radius: 12px; font-size: 1.3rem; }
+.coach-live .section-header { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.coach-live .section-hint { color: var(--text-secondary); }
+.coach-live .seg-btn { min-height: 44px; }
+.coach-live .rotation-assist-card { background: var(--bg-secondary); border-color: var(--border-subtle); flex-wrap: wrap; }
+.coach-live .assist-icon { display: none; }
+.coach-live .assist-swap-btn { min-height: 44px; box-shadow: none; }
+.coach-live .assist-title { color: var(--text-secondary); }
+.player-panel-summary { color: var(--text-secondary); line-height: 1.8; margin-bottom: 16px; }
+#modal-player .stepper-btn { width: 48px; height: 48px; }
+.panel-sub { margin-top: 24px; width: 100%; min-height: 48px; justify-content: center; }
+.modal-close-btn { min-width: 44px; min-height: 44px; }
+.modal-body { padding-bottom: calc(20px + var(--safe-bottom)); }
+.swap-candidate-item { min-height: 64px; width: 100%; text-align: left; color: var(--text-primary); font: inherit; }
+.candidate-name { white-space: normal; overflow-wrap: anywhere; }
+.candidate-time { color: var(--text-secondary); }
+.coach-live .toast-container { bottom: calc(var(--safe-bottom) + 155px); }
+@media (max-width: 360px) {
+  #view-match { padding-left: 10px; padding-right: 10px; }
+  .coach-live .jersey-badge { width: 32px; height: 32px; font-size: .8rem; }
+  .coach-live .player-card { gap: 8px; padding: 10px; }
+  .swap-columns { gap: 8px; }
+  .modal-body { padding-left: 12px; padding-right: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+/* Clip horizontal overflow without creating a scroll container for sticky clocks. */
+html, body { overflow-x: clip; }

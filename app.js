@@ -143,6 +143,8 @@
     events: [],
     
     // UI state
+    undoSubstitution: null,
+    selectedPlayerId: null,
     activeFilter: 'all', // 'all' | 'onCourt' | 'bench'
     selectedSwapOutId: null,
     selectedSwapInId: null,
@@ -255,7 +257,7 @@
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
-    container.appendChild(toast);
+    container.replaceChildren(toast);
 
     setTimeout(() => {
       toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
@@ -576,6 +578,7 @@
   }
 
   function pauseMatch() {
+    state.undoSubstitution = null;
     if (state.matchState !== 'running') return;
     const now = Date.now();
     stopClockTimer();
@@ -587,6 +590,7 @@
   }
 
   function resumeMatch() {
+    state.undoSubstitution = null;
     if (state.matchState !== 'paused') return;
     const now = Date.now();
     state.lastTickTimestamp = now;
@@ -610,6 +614,7 @@
   }
 
   function nextPeriod() {
+    state.undoSubstitution = null;
     if (state.matchState === 'running') {
       pauseMatch();
     }
@@ -627,6 +632,7 @@
   }
 
   function endMatch() {
+    state.undoSubstitution = null;
     if (state.matchState === 'running') {
       commitActiveDurations(Date.now());
       stopClockTimer();
@@ -640,6 +646,7 @@
   }
 
   function resetMatch() {
+    state.undoSubstitution = null;
     stopClockTimer();
     releaseWakeLock();
     state.matchState = 'notStarted';
@@ -726,9 +733,45 @@
   // ==========================================
   // Direct Substitution Actions
   // ==========================================
+  function rememberSubstitution(players) {
+    state.undoSubstitution = {
+      players: JSON.parse(JSON.stringify(players)),
+      eventIds: state.events.map(event => event.id)
+    };
+  }
+
+  function undoSubstitution() {
+    const previous = state.undoSubstitution;
+    if (!previous || !['running', 'paused'].includes(state.matchState)) return;
+    previous.players.forEach(saved => {
+      const player = state.players.find(p => p.id === saved.id);
+      // Foul edits made after the substitution must survive undo.
+      const fouls = player.personalFouls;
+      Object.assign(player, saved, { personalFouls: fouls });
+    });
+    state.events = state.events.filter(event => previous.eventIds.includes(event.id) ||
+      !['swap', 'subIn', 'subOut'].includes(event.type));
+    state.undoSubstitution = null;
+    saveState();
+    render();
+    showToast('Substitution undone. Player times restored.');
+  }
+
+  function renderPlayerPanel() {
+    const player = state.players.find(p => p.id === state.selectedPlayerId);
+    if (!player) return;
+    document.getElementById('player-panel-title').textContent = playerDisplayName(player);
+    document.getElementById('player-panel-summary').textContent =
+      `${player.status === 'playing' ? 'On court' : 'On bench'} · ${player.timesOnField} shifts · Played ${formatDuration(playerTotalPlayTime(player))} · Rested ${formatDuration(playerTotalBenchTime(player))}`;
+    document.getElementById('player-panel-fouls').textContent = `${player.personalFouls || 0} / ${state.matchSettings.maxPersonalFouls}`;
+    document.getElementById('btn-panel-foul-remove').disabled = !player.personalFouls;
+    document.getElementById('btn-panel-sub').textContent = player.status === 'playing' ? 'Sub out without replacement' : 'Sub in without replacement';
+  }
+
   function startPlayer(id) {
     const player = state.players.find(p => p.id === id);
     if (!player || player.status === 'playing') return;
+    rememberSubstitution([player]);
 
     const now = Date.now();
     if (state.matchState === 'running') {
@@ -758,6 +801,7 @@
   function stopPlayer(id) {
     const player = state.players.find(p => p.id === id);
     if (!player || player.status !== 'playing') return;
+    rememberSubstitution([player]);
 
     const now = Date.now();
     if (state.matchState === 'running') {
@@ -789,6 +833,7 @@
 
     if (!playerOut || !playerIn) return;
     if (playerOut.status !== 'playing' || playerIn.status === 'playing') return;
+    rememberSubstitution([playerOut, playerIn]);
 
     const now = Date.now();
 
@@ -1042,6 +1087,12 @@
   // DOM Rendering & UI Management
   // ==========================================
   function render() {
+    const isLive = ['running', 'paused'].includes(state.matchState);
+    document.body.classList.toggle('coach-live', isLive);
+    document.getElementById('match-dock').style.display = isLive ? 'block' : 'none';
+    document.getElementById('undo-bar').hidden = !state.undoSubstitution;
+    document.getElementById('undo-description').textContent = state.undoSubstitution ? 'Last substitution · undo before changing the clock' : '';
+    renderPlayerPanel();
     const viewSetup = document.getElementById('view-setup');
     const viewMatch = document.getElementById('view-match');
     const viewReport = document.getElementById('view-report');
@@ -1130,6 +1181,7 @@
 
   // Render Match View
   function renderMatchView() {
+    document.getElementById('match-status').textContent = state.matchState === 'running' ? '● Live · elapsed' : 'Paused · elapsed';
     // Badges & Counters
     const periodName = getPeriodName();
     document.getElementById('badge-period').textContent = `${periodName} ${state.currentPeriod} of ${state.matchSettings.totalPeriods}`;
@@ -1186,7 +1238,9 @@
       document.getElementById('rotation-assist-text').textContent =
         `Sub ${playerDisplayName(tip.outPlayer)} (on ${formatDuration(tip.shiftDuration)}) with ${playerDisplayName(tip.inPlayer)} (rested ${formatDuration(tip.restDuration)})`;
       document.getElementById('btn-assist-swap').onclick = () => {
-        swapPlayers(tip.outPlayer.id, tip.inPlayer.id);
+        setupQuickSwapModal(tip.outPlayer.id);
+        state.selectedSwapInId = tip.inPlayer.id;
+        renderSwapModalLists();
       };
     } else {
       rotationCard.style.display = 'none';
@@ -1224,7 +1278,7 @@
 
     // On Court List
     if (activePlayers.length === 0) {
-      listCourt.innerHTML = `<div class="empty-state">No players currently on court. Tap START next to a bench player.</div>`;
+      listCourt.innerHTML = `<div class="empty-state">No players currently on court. Open a bench player’s details to sub in, or use Swap.</div>`;
     } else {
       let html = '';
       activePlayers.forEach(p => {
@@ -1270,33 +1324,22 @@
         </div>
         <div class="player-info">
           <div class="player-top-line">
-            <span class="player-name">${escapeHTML(player.name)}</span>
-            <span class="shifts-badge">On: ${player.timesOnField || 0}x</span>
-            <div class="foul-control" title="Personal fouls: ${fouls}/${maxFouls}">
-              <button class="btn-foul-mini sub" data-action="remove-foul" data-id="${player.id}" title="Decrease foul">−</button>
-              <span class="foul-badge ${foulClass}">PF: ${fouls}</span>
-              <button class="btn-foul-mini add" data-action="add-foul" data-id="${player.id}" title="Assign personal foul">+</button>
-            </div>
-            ${isFouledOut ? '<span class="foul-out-pill">Fouled Out</span>' : ''}
+            <button class="player-name player-details" data-action="player-details" data-id="${player.id}" aria-label="${escapeHTML(player.name)} details and fouls">${escapeHTML(player.name)}</button>
+            <span class="foul-badge ${foulClass}">${isFouledOut ? 'Fouled out' : `${fouls} PF`}</span>
           </div>
           <div class="player-timers">
             <div class="stint-timer ${isCourt ? 'shift' : 'rest'}">
-              <span>${isCourt ? '⚡ Shift:' : '🌙 Rest:'}</span>
+              <span>${isCourt ? 'Shift' : 'Rest'}</span>
               <span class="tabular-nums stint-value" data-player-stint="${player.id}">${stint}</span>
             </div>
             <div class="total-time">
-              ON: <span class="tabular-nums play-value" data-player-play="${player.id}">${playTotal}</span>
+              Played <span class="tabular-nums play-value" data-player-play="${player.id}">${playTotal}</span>
             </div>
-            <div class="total-time">
-              OFF: <span class="tabular-nums bench-value" data-player-bench="${player.id}">${benchTotal}</span>
-            </div>
+
           </div>
         </div>
         <div class="player-actions">
-          <button class="btn-swap-mini" data-action="swap-player" data-id="${player.id}" title="Quick Swap">⇄</button>
-          <button class="btn-start-stop ${isCourt ? 'stop' : 'start'}" data-action="${isCourt ? 'stop-player' : 'start-player'}" data-id="${player.id}">
-            ${isCourt ? 'STOP' : 'START'}
-          </button>
+          <button class="btn-swap-mini" data-action="swap-player" data-id="${player.id}" aria-label="Swap ${escapeHTML(player.name)}">⇄</button>
         </div>
       </div>
     `;
@@ -1386,16 +1429,23 @@
   // ==========================================
   // Modal Managers
   // ==========================================
+  let modalReturnFocus = null;
+
   function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
+    modalReturnFocus = document.activeElement;
+    modal.inert = false;
     modal.classList.add('active');
+    modal.querySelector('button, input, textarea')?.focus();
   }
 
   function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
     modal.classList.remove('active');
+    modal.inert = true;
+    if (modalReturnFocus?.isConnected) modalReturnFocus.focus();
   }
 
   function setupQuickSwapModal(presetPlayerId = null) {
@@ -1437,10 +1487,10 @@
       const fouls = p.personalFouls || 0;
       const foulStr = fouls >= maxFouls ? '🚨 Fouled Out' : (fouls > 0 ? `${fouls} PF` : '');
       outHtml += `
-        <div class="swap-candidate-item ${isSel ? 'selected-out' : ''}" data-swap-out-id="${p.id}">
-          <div class="candidate-name">${playerDisplayName(p)} ${foulStr ? `<span style="font-size:0.75rem; color:${fouls>=maxFouls?'#ef4444':'#f59e0b'}; font-weight:700;">(${foulStr})</span>` : ''}</div>
+        <button type="button" aria-pressed="${isSel}" class="swap-candidate-item ${isSel ? 'selected-out' : ''}" data-swap-out-id="${p.id}">
+          <div class="candidate-name">${escapeHTML(playerDisplayName(p))} ${foulStr ? `<span style="font-size:0.75rem; color:${fouls>=maxFouls?'#ef4444':'#f59e0b'}; font-weight:700;">(${foulStr})</span>` : ''}</div>
           <div class="candidate-time">Shift: ${formatDuration(playerCurrentStint(p, now))}</div>
-        </div>
+        </button>
       `;
     });
     outList.innerHTML = outHtml || `<div class="empty-state">No active players</div>`;
@@ -1452,10 +1502,10 @@
       const fouls = p.personalFouls || 0;
       const foulStr = fouls >= maxFouls ? '🚨 Fouled Out' : (fouls > 0 ? `${fouls} PF` : '');
       inHtml += `
-        <div class="swap-candidate-item ${isSel ? 'selected-in' : ''}" data-swap-in-id="${p.id}">
-          <div class="candidate-name">${playerDisplayName(p)} ${foulStr ? `<span style="font-size:0.75rem; color:${fouls>=maxFouls?'#ef4444':'#f59e0b'}; font-weight:700;">(${foulStr})</span>` : ''}</div>
+        <button type="button" aria-pressed="${isSel}" class="swap-candidate-item ${isSel ? 'selected-in' : ''}" data-swap-in-id="${p.id}">
+          <div class="candidate-name">${escapeHTML(playerDisplayName(p))} ${foulStr ? `<span style="font-size:0.75rem; color:${fouls>=maxFouls?'#ef4444':'#f59e0b'}; font-weight:700;">(${foulStr})</span>` : ''}</div>
           <div class="candidate-time">Rested: ${formatDuration(playerCurrentStint(p, now))}</div>
-        </div>
+        </button>
       `;
     });
     inList.innerHTML = inHtml || `<div class="empty-state">No bench players</div>`;
@@ -1546,6 +1596,27 @@
   // Event Listeners & Interactions Setup
   // ==========================================
   function setupEventListeners() {
+    document.querySelectorAll('.modal-overlay').forEach(modal => { modal.inert = true; });
+    document.addEventListener('keydown', event => {
+      const modal = document.querySelector('.modal-overlay.active');
+      if (!modal) return;
+      if (event.key === 'Escape') closeModal(modal.id);
+      if (event.key === 'Tab') {
+        const controls = [...modal.querySelectorAll('button:not(:disabled), input, textarea, select')].filter(el => el.getClientRects().length);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    });
+    document.getElementById('btn-undo-sub').addEventListener('click', undoSubstitution);
+    document.getElementById('btn-panel-foul-add').addEventListener('click', () => addPersonalFoul(state.selectedPlayerId));
+    document.getElementById('btn-panel-foul-remove').addEventListener('click', () => removePersonalFoul(state.selectedPlayerId));
+    document.getElementById('btn-panel-sub').addEventListener('click', () => {
+      const player = state.players.find(p => p.id === state.selectedPlayerId);
+      if (!player) return;
+      if (player.status === 'playing') stopPlayer(player.id); else startPlayer(player.id);
+      closeModal('modal-player');
+    });
     // 1. Sport preset change
     document.getElementById('select-sport').addEventListener('change', (e) => {
       const val = e.target.value;
@@ -1737,7 +1808,11 @@
       const action = btn.dataset.action;
       const id = btn.dataset.id;
 
-      if (action === 'start-player') {
+      if (action === 'player-details') {
+        state.selectedPlayerId = id;
+        renderPlayerPanel();
+        openModal('modal-player');
+      } else if (action === 'start-player') {
         startPlayer(id);
       } else if (action === 'stop-player') {
         stopPlayer(id);
@@ -1842,7 +1917,7 @@
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
-          overlay.classList.remove('active');
+          closeModal(overlay.id);
         }
       });
     });
