@@ -11,6 +11,7 @@
   // ==========================================
   const SPORT_PRESETS = {
     'Basketball': {
+      teamName: 'Bullets',
       playersOnField: 5,
       periodMinutes: 10,
       totalPeriods: 4,
@@ -133,7 +134,7 @@
       periodDurationMinutes: 10,
       totalPeriods: 4,
       maxPersonalFouls: 5,
-      teamName: 'Warriors'
+      teamName: 'Bullets'
     },
     currentPeriod: 1,
     periodElapsedSeconds: 0,
@@ -521,12 +522,17 @@
   function loadSampleTeam() {
     const preset = SPORT_PRESETS[state.matchSettings.sport] || SPORT_PRESETS['Basketball'];
     state.players = [];
+    if (preset.teamName) {
+      state.matchSettings.teamName = preset.teamName;
+      const inputTeam = document.getElementById('input-team-name');
+      if (inputTeam) inputTeam.value = preset.teamName;
+    }
     preset.sampleTeam.forEach(p => {
       addPlayer(p.name, p.jersey, p.isStarter);
     });
     saveState();
     render();
-    showToast(`Loaded ${preset.sampleTeam.length} players for ${state.matchSettings.sport}!`);
+    showToast(`Loaded ${preset.sampleTeam.length} players for ${preset.teamName || state.matchSettings.sport}!`);
   }
 
   // ==========================================
